@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ospos-db
+spec:
+  selector:
+    matchLabels:
+      app: ospos-db
+  template:
+    metadata:
+      labels:
+        app: ospos-db
+    spec:
+      containers:
+      - name: mariadb
+        image: mariadb:10.5
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: "ospos_password"
+        - name: MYSQL_DATABASE
+          value: "ospos"
+        ports:
+        - containerPort: 3306
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-service
+spec:
+  selector:
+    app: ospos-db
+  ports:
+    - protocol: TCP
+      port: 3306
+      targetPort: 3306
