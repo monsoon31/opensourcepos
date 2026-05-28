@@ -1,62 +1,29 @@
-name: Coding Standards
+name: Build and Push OSPOS Image
 
 on:
   push:
-    paths:
-      - '**.php'
-      - 'spark'
-      - '.github/workflows/test-coding-standards.yml'
-  pull_request:
-    paths:
-      - '**.php'
-      - 'spark'
-      - '.github/workflows/test-coding-standards.yml'
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
-
-permissions:
-  contents: read
+    branches: [ "master", "main" ] # Sesuaikan dengan nama branch utama kamu
 
 jobs:
-  lint:
-    name: PHP ${{ matrix.php-version }} Lint with PHP CS Fixer
-    runs-on: ubuntu-22.04
-
-    strategy:
-      fail-fast: false
-      matrix:
-        php-version:
-          - '8.2'
-          - '8.3'
-          - '8.4'
-
+  build-and-push:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          php-version: ${{ matrix.php-version }}
-          extensions: tokenizer
-          coverage: none
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Get composer cache directory
-        run: echo "COMPOSER_CACHE_FILES_DIR=$(composer config cache-files-dir)" >> $GITHUB_ENV
-
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Build and Push
+        uses: docker/build-push-action@v5
         with:
-          path: ${{ env.COMPOSER_CACHE_FILES_DIR }}
-          key: ${{ runner.os }}-${{ matrix.php-version }}-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-${{ matrix.php-version }}-
-            ${{ runner.os }}-
-
-      - name: Install dependencies
-        run: composer update --ansi --no-interaction
-
-      - name: Run lint on `app/`, `public/`
-        run: vendor/bin/php-cs-fixer fix --verbose --ansi --dry-run --config=.php-cs-fixer.no-header.php --using-cache=no --diff
+          context: .
+          file: docker/Dockerfile # Pastikan path ke Dockerfile benar
+          target: ospos           # <--- PENTING: Supaya yang di-build hanya stage produksi, bukan dev
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/opensourcepos:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/opensourcepos:${{ github.sha }}
