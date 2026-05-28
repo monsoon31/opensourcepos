@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ospos-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ospos-app
+  template:
+    metadata:
+      labels:
+        app: ospos-app
+    spec:
+      containers:
+      - name: ospos
+        image: dotujr/opensourcepos:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+        env:
+        - name: DATABASE_HOST
+          value: "mysql-service" # Ini memanggil Service MySQL tadi
+        - name: DATABASE_USER
+          value: "root"
+        - name: DATABASE_PASSWORD
+          value: "ospos_password"
+        - name: DATABASE_NAME
+          value: "ospos"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ospos-service
+spec:
+  type: NodePort
+  selector:
+    app: ospos-app
+  ports:
+    - port: 80
+      targetPort: 80
+      nodePort: 30080 # Kamu bisa akses di 192.168.18.84:30080
