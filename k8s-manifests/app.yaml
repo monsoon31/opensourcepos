@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ospos-app
+  namespace: default
 spec:
   replicas: 1
   selector:
@@ -18,20 +19,23 @@ spec:
         imagePullPolicy: Always
         ports:
         - containerPort: 80
+        # Mengambil semua env umum dari ConfigMap
+        envFrom:
+        - configMapRef:
+            name: ospos-config
+        # Mengambil password dari Secret
         env:
-        - name: DATABASE_HOST
-          value: "mysql-service" # Ini memanggil Service MySQL tadi
-        - name: DATABASE_USER
-          value: "root"
         - name: DATABASE_PASSWORD
-          value: "ospos_password"
-        - name: DATABASE_NAME
-          value: "ospos"
+          valueFrom:
+            secretKeyRef:
+              name: ospos-secret
+              key: mysql-password
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: ospos-service
+  namespace: default
 spec:
   type: NodePort
   selector:
@@ -39,4 +43,4 @@ spec:
   ports:
     - port: 80
       targetPort: 80
-      nodePort: 30080 # Kamu bisa akses di 192.168.18.84:30080
+      nodePort: 30080
