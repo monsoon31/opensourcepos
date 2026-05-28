@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ospos-db
+  namespace: default
 spec:
   selector:
     matchLabels:
@@ -16,9 +17,19 @@ spec:
         image: mariadb:10.5
         env:
         - name: MYSQL_ROOT_PASSWORD
-          value: "ospos_password"
+          valueFrom:
+            secretKeyRef:
+              name: ospos-secret
+              key: mysql-root-password
+        - name: MYSQL_USER
+          value: "ospos_user"
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: ospos-secret
+              key: mysql-password
         - name: MYSQL_DATABASE
-          value: "ospos"
+          value: "ospos_db"
         ports:
         - containerPort: 3306
 ---
@@ -26,6 +37,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mysql-service
+  namespace: default
 spec:
   selector:
     app: ospos-db
