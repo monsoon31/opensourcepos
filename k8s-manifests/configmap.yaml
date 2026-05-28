@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ospos-config
+  namespace: default
+data:
+  APPLICATION_ENV: "production"
+  CI_ENV: "production"
+  FORCE_HTTPS: "false"
+  
+  # Konfigurasi Database (Tanpa Password)
+  DATABASE_HOST: "mysql-service"
+  DATABASE_USER: "ospos_user"
+  DATABASE_NAME: "ospos_db"
