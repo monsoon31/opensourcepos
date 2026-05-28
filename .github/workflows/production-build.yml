@@ -2,7 +2,11 @@ name: CI-Production-Build
 
 on:
   push:
-    branches: [ "master", "main" ] # Sesuaikan dengan nama branch utama kamu
+    branches: [ "master", "main" ]
+
+env:
+  # Memaksa Runner menggunakan Node 24 sesuai saran log error kamu
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-image:
@@ -20,4 +24,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name
+      - name: Build and Push
+        uses: docker/build-push-action@v6 # Upgrade ke v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: ospos
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/opensourcepos:latest
