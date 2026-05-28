@@ -24,7 +24,8 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # KITA PAKSA KE ROOT
           file: ./Dockerfile 
           push: true
+          # INI KUNCINYA: Berhenti di stage 'ospos', jangan lanjut ke 'ospos_dev'
+          target: ospos
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/opensourcepos:latest
