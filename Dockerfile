@@ -1,28 +1,34 @@
 FROM php:8.2-apache AS ospos
 
-# 1. Install library dasar (Tanpa embel-embel dulu supaya cepat)
+# 1. Install Dependencies
 RUN apt-get update && apt-get install -y \
-    libicu-dev libpng-dev libzip-dev libonig-dev unzip git \
-    && docker-php-ext-install intl gd zip mysqli pdo_mysql mbstring
+    libicu-dev libpng-dev libzip-dev libonig-dev libjpeg62-turbo-dev \
+    libfreetype6-dev unzip git \
+    && rm -rf /var/lib/apt/lists/* \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install intl gd zip mysqli pdo_mysql mbstring bcmath
 
 # 2. Ambil Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 3. Pindah ke folder standar Apache
-WORKDIR /var/www/html
-
-# 4. Copy SEMUA file dari repo
+# 3. Copy semua file
+WORKDIR /app
 COPY . .
 
-# 5. Aktifkan Rewrite & Setup Apache
-RUN a2enmod rewrite
-RUN sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
+# 4. PINDAH KE FOLDER YANG ADA composer.json
+# Berdasarkan tree kamu, filenya ada di folder opensourcepos
+WORKDIR /app/opensourcepos
 
-# 6. Jalankan install SECARA SEDERHANA
-# Jika ini gagal lagi, berarti di GitHub kamu memang TIDAK ADA file composer.json
+# 5. Jalankan install
 RUN composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
 
-# 7. Beri izin folder
-RUN chown -R www-data:www-data /var/www/html
+# 6. Setup Apache (Arahkan ke public di dalam subfolder)
+RUN a2enmod rewrite
+ENV APACHE_DOCUMENT_ROOT /app/opensourcepos/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+
+# 7. Permissions
+RUN chown -R www-data:www-data /app/opensourcepos/writable /app/opensourcepos/public/uploads
 
 EXPOSE 80
