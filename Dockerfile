@@ -1,4 +1,4 @@
-# Tambahkan "AS ospos" di baris pertama supaya GitHub Actions tidak error
+# Menggunakan AS ospos sesuai permintaan cicd.yml
 FROM php:8.1-apache AS ospos
 
 # Set folder kerja
@@ -33,8 +33,9 @@ RUN a2enmod rewrite
 # 4. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 5. Copy file library
-COPY composer.json composer.lock ./
+# 5. Copy file composer (Menggunakan wildcard * agar composer.lock opsional)
+# Ini triknya: kalau composer.lock tidak ada, build tidak akan gagal
+COPY composer.js[n] composer.loc[k] ./
 
 # 6. Jalankan install library
 RUN composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
