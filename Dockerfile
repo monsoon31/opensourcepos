@@ -1,11 +1,10 @@
-# 1. Gunakan base image PHP dengan Apache
-FROM php:8.1-apache
+# Tambahkan "AS ospos" di baris pertama supaya GitHub Actions tidak error
+FROM php:8.1-apache AS ospos
 
-# 2. Set folder kerja di dalam container
+# Set folder kerja
 WORKDIR /app
 
-# 3. Install library sistem yang dibutuhkan OSPOS & PHP Extensions
-# Tanda \ di akhir baris artinya perintahnya masih berlanjut ke bawah
+# 1. Install library sistem
 RUN apt-get update && apt-get install -y \
     libicu-dev \
     libpng-dev \
@@ -17,7 +16,7 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Install ekstensi PHP yang diwajibkan CodeIgniter 4
+# 2. Install ekstensi PHP
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install \
     intl \
@@ -28,23 +27,23 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
     mbstring \
     bcmath
 
-# 5. Aktifkan fitur rewrite Apache (agar link website tidak error)
+# 3. Aktifkan rewrite Apache
 RUN a2enmod rewrite
 
-# 6. Install Composer (alat untuk download library PHP)
+# 4. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 7. Copy file library dulu (agar build lebih cepat)
+# 5. Copy file library
 COPY composer.json composer.lock ./
 
-# 8. Jalankan install library (Step yang tadi error)
+# 6. Jalankan install library
 RUN composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
 
-# 9. Copy seluruh kode aplikasi dari laptop/github ke container
+# 7. Copy seluruh kode aplikasi
 COPY . .
 
-# 10. Beri izin akses folder agar web bisa nulis log & upload gambar
+# 8. Beri izin akses folder
 RUN chown -R www-data:www-data /app/writable /app/public/uploads
 
-# 11. Buka port 80
+# 9. Buka port 80
 EXPOSE 80
