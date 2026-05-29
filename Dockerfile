@@ -1,9 +1,10 @@
-FROM php:8.1-apache AS ospos
+# 1. Gunakan PHP 8.2 (Sesuai requirement di composer.json kamu)
+FROM php:8.2-apache AS ospos
 
-# Set working directory
+# Set working directory utama
 WORKDIR /app
 
-# 1. Install System Dependencies & PHP Extensions (Wajib)
+# 2. Install System Dependencies & PHP Extensions
 RUN apt-get update && apt-get install -y \
     libicu-dev \
     libpng-dev \
@@ -17,20 +18,26 @@ RUN apt-get update && apt-get install -y \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install intl gd zip mysqli pdo_mysql mbstring bcmath
 
-# 2. Aktifkan Apache Rewrite
+# 3. Aktifkan Apache Rewrite
 RUN a2enmod rewrite
 
-# 3. Ambil Composer
+# 4. Ambil Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 4. Copy SEMUA file dulu (Termasuk composer.json)
-# Ini memastikan Composer pasti menemukan filenya
+# 5. Copy SELURUH isi repo ke dalam folder /app
 COPY . .
 
-# 5. Jalankan Composer Install
+# 6. Pindah ke sub-folder tempat composer.json berada dan jalankan install
+# Kita gunakan WORKDIR untuk pindah ke folder yang benar
+WORKDIR /app/opensourcepos
 RUN composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
 
-# 6. Set Permissions
-RUN chown -R www-data:www-data /app/writable /app/public/uploads
+# 7. Set Permissions untuk folder writable & uploads agar web bisa jalan
+RUN chown -R www-data:www-data /app/opensourcepos/writable /app/opensourcepos/public/uploads
+
+# 8. Sesuaikan Apache Document Root ke folder public OSPOS
+# Karena file index.php ada di /app/opensourcepos/public
+RUN sed -ri -e 's!/var/www/html!/app/opensourcepos/public!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!/app/opensourcepos/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 EXPOSE 80
