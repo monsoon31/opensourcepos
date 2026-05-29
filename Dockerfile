@@ -1,40 +1,35 @@
 FROM php:8.2-apache AS ospos
 
-# 1. Set folder kerja di /var/www/html (Standar Apache)
-WORKDIR /var/www/html
+WORKDIR /app
 
-# 2. Install library sistem & PHP Extensions
+# 1. Install dependencies (pakai cache yang sudah ada)
 RUN apt-get update && apt-get install -y \
-    libicu-dev \
-    libpng-dev \
-    libzip-dev \
-    libonig-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
-    unzip \
-    git \
-    && rm -rf /var/lib/apt/lists/* \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install intl gd zip mysqli pdo_mysql mbstring bcmath
+    libicu-dev libpng-dev libzip-dev libonig-dev unzip git \
+    && docker-php-ext-install intl gd zip mysqli pdo_mysql mbstring
 
-# 3. Aktifkan Apache Rewrite
-RUN a2enmod rewrite
-
-# 4. Ambil Composer
+# 2. Ambil Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 5. Copy SEMUA file dari repo ke container
+# 3. Copy SEMUA file dari GitHub Runner ke Container
 COPY . .
 
-# 6. Jalankan Composer Install (Langsung di sini, karena filenya pasti di sini)
-RUN composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
+# 4. STEP KRUSIAL: Lihat struktur folder sebenarnya
+# Kita cari di mana letak composer.json
+RUN echo "--- CEK ROOT FOLDER ---" && ls -F
+RUN echo "--- CEK SEMUA SUBFOLDER (Mencari composer.json) ---" && find . -name "composer.json"
 
-# 7. Set Permissions
-RUN chown -R www-data:www-data /var/www/html/writable /var/www/html/public/uploads
+# 5. Jalankan install menggunakan hasil pencarian 'find'
+# Perintah ini akan otomatis masuk ke folder mana pun yang ada composer.json nya
+RUN TARGET_DIR=$(find . -name "composer.json" -exec dirname {} \;) && \
+    echo "Ditemukan composer.json di: $TARGET_DIR" && \
+    cd "$TARGET_DIR" && \
+    composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
 
-# 8. Arahkan Document Root Apache ke folder public
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# 6. Setup Apache (Kita buat dinamis)
+RUN TARGET_DIR=$(find . -name "composer.json" -exec dirname {} \;) && \
+    PUBLIC_DIR="$WORKDIR/$TARGET_DIR/public" && \
+    sed -ri -e "s!/var/www/html!$PUBLIC_DIR!g" /etc/apache2/sites-available/*.conf && \
+    sed -ri -e "s!/var/www/!$PUBLIC_DIR!g" /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
+RUN a2enmod rewrite
 EXPOSE 80
