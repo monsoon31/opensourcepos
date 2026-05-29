@@ -1,10 +1,9 @@
-# 1. Gunakan PHP 8.2 (Sesuai requirement di composer.json kamu)
 FROM php:8.2-apache AS ospos
 
-# Set working directory utama
-WORKDIR /app
+# 1. Set folder kerja di /var/www/html (Standar Apache)
+WORKDIR /var/www/html
 
-# 2. Install System Dependencies & PHP Extensions
+# 2. Install library sistem & PHP Extensions
 RUN apt-get update && apt-get install -y \
     libicu-dev \
     libpng-dev \
@@ -24,20 +23,18 @@ RUN a2enmod rewrite
 # 4. Ambil Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# 5. Copy SELURUH isi repo ke dalam folder /app
+# 5. Copy SEMUA file dari repo ke container
 COPY . .
 
-# 6. Pindah ke sub-folder tempat composer.json berada dan jalankan install
-# Kita gunakan WORKDIR untuk pindah ke folder yang benar
-WORKDIR /app/opensourcepos
+# 6. Jalankan Composer Install (Langsung di sini, karena filenya pasti di sini)
 RUN composer install --no-dev --no-interaction --optimize-autoloader --ignore-platform-reqs
 
-# 7. Set Permissions untuk folder writable & uploads agar web bisa jalan
-RUN chown -R www-data:www-data /app/opensourcepos/writable /app/opensourcepos/public/uploads
+# 7. Set Permissions
+RUN chown -R www-data:www-data /var/www/html/writable /var/www/html/public/uploads
 
-# 8. Sesuaikan Apache Document Root ke folder public OSPOS
-# Karena file index.php ada di /app/opensourcepos/public
-RUN sed -ri -e 's!/var/www/html!/app/opensourcepos/public!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -e 's!/var/www/!/app/opensourcepos/public!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+# 8. Arahkan Document Root Apache ke folder public
+ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
 EXPOSE 80
